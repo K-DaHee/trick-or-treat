@@ -1,0 +1,123 @@
+.start-screen {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+
+  background: radial-gradient(
+    circle at 50% 30%,
+    #45235f 0%,
+    #251437 60%,
+    #151021 100%
+  );
+
+  color: #fff;
+  font-family: system-ui, sans-serif;
+}
+
+.start-screen__content {
+  width: 100%;
+  max-width: 420px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 2.5dvh, 24px);
+
+  text-align: center;
+}
+
+.start-screen__title {
+  margin: 0;
+  font-size: clamp(24px, 6vw, 40px);
+  line-height: 1.25;
+}
+
+.start-screen__subtitle {
+  margin: 12px 0 0;
+  font-size: clamp(18px, 4.5vw, 28px);
+  font-weight: 700;
+  color: #ffb347;
+}
+
+.start-screen__pumpkin {
+  display: block;
+  width: clamp(80px, 28vw, 150px);
+  max-height: 24dvh;
+  object-fit: contain;
+
+  filter: drop-shadow(0 8px 20px #0005);
+}
+
+.start-screen__description {
+  max-width: 320px;
+  margin: 0;
+
+  font-size: clamp(14px, 3.5vw, 16px);
+  line-height: 1.6;
+  color: #e5d8ee;
+}
+
+.start-screen__button {
+  width: min(100%, 260px);
+  min-height: 52px;
+  padding: 12px 24px;
+
+  border: none;
+  border-radius: 14px;
+
+  background: #ff9635;
+  color: #251437;
+
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.start-screen__button:hover {
+  background: #ffb347;
+}
+
+.start-screen__button:active {
+  transform: scale(0.97);
+}
+
+.start-screen__button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+}
+
+.start-screen__instructions {
+  margin: 0;
+  font-size: 13px;
+  color: #cbb8db;
+}
+
+@media (max-height: 600px) {
+  .start-screen__content {
+    gap: 10px;
+  }
+
+  .start-screen__pumpkin {
+    width: 75px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-screen__button {
+    transition: none;
+  }
+}
