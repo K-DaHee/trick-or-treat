@@ -1,9 +1,14 @@
 import Phaser from 'phaser';
 
+type LaneIndex = 0 | 1 | 2;
+
 export class Pumpkin extends Phaser.GameObjects.Image {
   private groundY: number;
   private readonly baseScaleX: number;
   private readonly baseScaleY: number;
+
+  private laneIndex: LaneIndex = 1;
+  private laneTween?: Phaser.Tweens.Tween;
 
   private readonly bounceState = {
     offsetY: 0,
@@ -29,6 +34,37 @@ export class Pumpkin extends Phaser.GameObjects.Image {
   setGroundPosition(x: number, y: number) {
     this.groundY = y;
     this.setPosition(x, y + this.bounceState.offsetY);
+  }
+
+  setLanePosition(sceneWidth: number, groundY: number) {
+    this.laneTween?.stop();
+
+    const laneWidth = sceneWidth / 3;
+    const x = laneWidth * (this.laneIndex + 0.5);
+
+    this.setGroundPosition(x, groundY);
+  }
+
+  moveLane(direction: -1 | 1, sceneWidth: number) {
+    const nextLane = Phaser.Math.Clamp(
+      this.laneIndex + direction,
+      0,
+      2
+    ) as LaneIndex;
+
+    if (nextLane === this.laneIndex) return;
+
+    this.laneIndex = nextLane;
+    this.laneTween?.stop();
+
+    const laneWidth = sceneWidth / 3;
+
+    this.laneTween = this.scene.tweens.add({
+      targets: this,
+      x: laneWidth * (nextLane + 0.5),
+      duration: 160,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   startBounce() {
