@@ -1,0 +1,33 @@
+.phaser-game {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.phaser-game__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.phaser-game__canvas canvas {
+  display: block;
+}
+
+/* Tablet */
+@media (min-width: 768px) {
+  .phaser-game {
+    width: min(640px, 56.25dvh);
+    height: auto;
+    aspect-ratio: 9 / 16;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1200px) {
+  .phaser-game {
+    width: min(480px, 56.25dvh);
+  }
+}

@@ -1,0 +1,54 @@
+.game-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+
+  padding: clamp(12px, 4vw, 20px);
+  box-sizing: border-box;
+
+  pointer-events: none;
+}
+
+.game-hud__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  padding: 10px 14px;
+  border-radius: 12px;
+
+  background: rgba(33, 18, 56, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.game-hud__label {
+  color: #d5bce8;
+  font-size: clamp(10px, 2.5vw, 12px);
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.game-hud__value {
+  color: #ffffff;
+  font-size: clamp(18px, 5vw, 26px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.game-hud__stat:last-child .game-hud__value {
+  color: #ffb347;
+}
+
+@media (max-width: 360px) {
+  .game-hud__stat {
+    padding: 8px 10px;
+  }
+}

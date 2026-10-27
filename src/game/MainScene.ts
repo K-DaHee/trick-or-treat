@@ -6,19 +6,53 @@ export class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.svg('pumpkin', '/assets/sprites/pumpkin-placeholder.svg');
+    this.load.svg(
+      'pumpkin',
+      '/assets/sprites/pumpkin-placeholder.svg'
+    );
   }
 
   create() {
     this.cameras.main.setBackgroundColor('#211238');
 
-    this.add
-      .text(180, 240, 'Phaser is ready!', {
+    const title = this.add
+      .text(0, 0, 'Phaser is ready!', {
         fontSize: '24px',
         color: '#ffffff',
       })
       .setOrigin(0.5);
 
-    this.add.image(180, 340, 'pumpkin');
+    const pumpkin = this.add.image(0, 0, 'pumpkin');
+
+    const updateLayout = () => {
+      const { width, height } = this.scale;
+
+      title.setPosition(
+        width / 2,
+        height * 0.4
+      );
+
+      pumpkin.setPosition(
+        width / 2,
+        height * 0.55
+      );
+    };
+
+    updateLayout();
+
+    this.scale.on(
+      Phaser.Scale.Events.RESIZE,
+      updateLayout
+    );
+
+    this.events.once(
+      Phaser.Scenes.Events.SHUTDOWN,
+      () => {
+        this.scale.off(
+          Phaser.Scale.Events.RESIZE,
+          updateLayout
+        );
+      }
+    );
   }
 }
