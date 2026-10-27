@@ -19,7 +19,7 @@ export default function StartScreen({ onStart }: StartScreenProps) {
 
         <img
           className="start-screen__pumpkin"
-          src="/assets/sprites/pumpkin-placeholder.svg"
+          src="/assets/sprites/pumpkin.png"
           alt="Pumpkin character"
         />
 
