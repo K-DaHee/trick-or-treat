@@ -21,13 +21,15 @@ export class MainScene extends Phaser.Scene {
     const updateLayout = () => {
       const { width, height } = this.scale;
 
-      pumpkin.setPosition(
+      pumpkin.setGroundPosition(
         width / 2,
         height * 0.85
       );
     };
 
     updateLayout();
+
+    pumpkin.startBounce();
 
     this.scale.on(
       Phaser.Scale.Events.RESIZE,
