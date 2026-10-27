@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { HalloweenEnvironment } from './objects/HalloweenEnvironment';
 import { Pumpkin } from './objects/Pumpkin';
 
 export class MainScene extends Phaser.Scene {
@@ -11,15 +12,28 @@ export class MainScene extends Phaser.Scene {
       'pumpkin',
       '/assets/sprites/pumpkin.png'
     );
+
+    this.load.image(
+      'halloween-sky',
+      '/assets/backgrounds/halloween-sky.png'
+    );
+
+    this.load.image(
+      'halloween-road',
+      '/assets/backgrounds/halloween-road.png'
+    );
   }
 
   create() {
     this.cameras.main.setBackgroundColor('#211238');
 
+    const environment = new HalloweenEnvironment(this);
     const pumpkin = new Pumpkin(this, 0, 0);
 
     const updateLayout = () => {
       const { width, height } = this.scale;
+
+      environment.resize(width, height);
 
       pumpkin.setLanePosition(
         width,
