@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { HalloweenEnvironment } from './objects/HalloweenEnvironment';
 import { Pumpkin } from './objects/Pumpkin';
+import { SpawnManager } from './objects/SpawnManager';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
+  private spawnManager?: SpawnManager;
 
   constructor() {
     super('MainScene');
@@ -24,6 +26,21 @@ export class MainScene extends Phaser.Scene {
       'halloween-road-infinite-no-lines',
       '/assets/backgrounds/halloween-road-infinite-no-lines.png'
     );
+
+    this.load.image(
+      'halloween-candy',
+      '/assets/sprites/halloween-candy.png'
+    );
+
+    this.load.image(
+      'halloween-bat',
+      '/assets/sprites/halloween-bat.png'
+    );
+
+    this.load.image(
+      'halloween-ghost',
+      '/assets/sprites/halloween-ghost.png'
+    );
   }
 
   create() {
@@ -32,10 +49,13 @@ export class MainScene extends Phaser.Scene {
     this.environment = new HalloweenEnvironment(this);
     const pumpkin = new Pumpkin(this, 0, 0);
 
+    this.spawnManager = new SpawnManager(this);
+
     const updateLayout = () => {
       const { width, height } = this.scale;
 
       this.environment?.resize(width, height);
+      this.spawnManager?.resize(width, height);
 
       pumpkin.setLanePosition(
         width,
@@ -122,11 +142,14 @@ export class MainScene extends Phaser.Scene {
 
         this.input.off('pointerdown', onPointerDown);
         this.input.off('pointerup', onPointerUp);
+
+        this.spawnManager?.destroy();
       }
     );
   }
 
   update(_time: number, delta: number) {
     this.environment?.scroll(delta);
+    this.spawnManager?.update(delta);
   }
 }
