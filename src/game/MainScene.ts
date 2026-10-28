@@ -7,11 +7,16 @@ import {
   type SpawnType,
 } from './objects/SpawnManager';
 import { ScoreManager } from './objects/ScoreManager';
+import {
+  GameStateManager,
+  type GameResult,
+} from './objects/GameStateManager';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
   private spawnManager?: SpawnManager;
   private scoreManager?: ScoreManager;
+  private gameStateManager?: GameStateManager;
   private pumpkin?: Pumpkin;
 
   private lastPublishedScore = -1;
@@ -64,6 +69,10 @@ export class MainScene extends Phaser.Scene {
     this.spawnManager = new SpawnManager(this);
     this.scoreManager = new ScoreManager();
 
+    // Initialize game state
+    this.gameStateManager = new GameStateManager();
+    this.gameStateManager.start();
+
     this.lastPublishedScore = -1;
     this.lastPublishedCandy = -1;
 
@@ -86,10 +95,18 @@ export class MainScene extends Phaser.Scene {
     pumpkin.startBounce();
 
     const moveLeft = () => {
+      if (!this.gameStateManager?.isPlaying) {
+        return;
+      }
+
       pumpkin.moveLane(-1, this.scale.width);
     };
 
     const moveRight = () => {
+      if (!this.gameStateManager?.isPlaying) {
+        return;
+      }
+
       pumpkin.moveLane(1, this.scale.width);
     };
 
@@ -105,6 +122,10 @@ export class MainScene extends Phaser.Scene {
 
     // Track where the swipe begins
     const onPointerDown = (pointer: Phaser.Input.Pointer) => {
+      if (!this.gameStateManager?.isPlaying) {
+        return;
+      }
+
       swipeStart = {
         x: pointer.x,
         y: pointer.y,
@@ -114,6 +135,11 @@ export class MainScene extends Phaser.Scene {
 
     // Move one lane when a horizontal swipe is detected
     const onPointerUp = (pointer: Phaser.Input.Pointer) => {
+      if (!this.gameStateManager?.isPlaying) {
+        swipeStart = null;
+        return;
+      }
+
       if (!swipeStart || pointer.id !== swipeStart.pointerId) {
         return;
       }
@@ -171,16 +197,41 @@ export class MainScene extends Phaser.Scene {
   }
 
   private handleObjectCollision = (type: SpawnType) => {
-    if (type === 'candy') {
-      this.scoreManager?.collectCandy();
-
-      console.log('🍬 Candy collected!');
-
-      this.publishScore();
+    if (
+      !this.gameStateManager?.isPlaying ||
+      !this.scoreManager
+    ) {
       return;
     }
 
+    if (type === 'candy') {
+      this.scoreManager.collectCandy();
+      this.publishScore();
+
+      console.log('🍬 Candy collected!');
+      return;
+    }
+
+    // Save the final result when an obstacle is hit
+    const result: GameResult = {
+      score: this.scoreManager.score,
+      candy: this.scoreManager.candy,
+      survivalSeconds: this.scoreManager.survivalSeconds,
+    };
+
+    // Prevent duplicate game-over events
+    if (!this.gameStateManager.gameOver(result)) {
+      return;
+    }
+
+    // Stop pumpkin animations and lane movement
+    this.tweens.killAll();
+
+    // Notify React about the final game result
+    this.game.events.emit('game-over', result);
+
     console.log(`💥 Hit by ${type}!`);
+    console.log('🏁 Game Over:', result);
   };
 
   private publishScore() {
@@ -210,6 +261,11 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
+    // Stop gameplay updates after game over
+    if (!this.gameStateManager?.isPlaying) {
+      return;
+    }
+
     this.environment?.scroll(delta);
     this.spawnManager?.update(delta);
     this.scoreManager?.update(delta);
