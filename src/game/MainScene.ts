@@ -3,6 +3,8 @@ import { HalloweenEnvironment } from './objects/HalloweenEnvironment';
 import { Pumpkin } from './objects/Pumpkin';
 
 export class MainScene extends Phaser.Scene {
+  private environment?: HalloweenEnvironment;
+
   constructor() {
     super('MainScene');
   }
@@ -19,21 +21,21 @@ export class MainScene extends Phaser.Scene {
     );
 
     this.load.image(
-      'halloween-road',
-      '/assets/backgrounds/halloween-road.png'
+      'halloween-road-infinite-no-lines',
+      '/assets/backgrounds/halloween-road-infinite-no-lines.png'
     );
   }
 
   create() {
     this.cameras.main.setBackgroundColor('#211238');
 
-    const environment = new HalloweenEnvironment(this);
+    this.environment = new HalloweenEnvironment(this);
     const pumpkin = new Pumpkin(this, 0, 0);
 
     const updateLayout = () => {
       const { width, height } = this.scale;
 
-      environment.resize(width, height);
+      this.environment?.resize(width, height);
 
       pumpkin.setLanePosition(
         width,
@@ -122,5 +124,9 @@ export class MainScene extends Phaser.Scene {
         this.input.off('pointerup', onPointerUp);
       }
     );
+  }
+
+  update(_time: number, delta: number) {
+    this.environment?.scroll(delta);
   }
 }
