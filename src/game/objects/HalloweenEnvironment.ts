@@ -15,7 +15,7 @@ export class HalloweenEnvironment extends Phaser.GameObjects.Container {
   private scrollOffset = 0;
   private frameElapsed = 0;
 
-  private readonly scrollSpeed = 90;
+  private readonly scrollSpeed = 200;
   private readonly roadTop = 0.24;
   private readonly perspective = 3;
   private readonly repeatCount = 2.7;
@@ -99,17 +99,18 @@ export class HalloweenEnvironment extends Phaser.GameObjects.Container {
     this.renderRoad();
   }
 
-  scroll(delta: number) {
+  
+  scroll(delta: number, speedMultiplier = 1) {
     if (this.sceneWidth === 0 || this.sceneHeight === 0) {
-      return;
+        return;
     }
 
     const deltaSeconds = Math.min(delta, 100) / 1000;
 
     // Move the road and lane markings together
     this.scrollOffset = (
-      this.scrollOffset +
-      this.scrollSpeed * deltaSeconds
+        this.scrollOffset +
+        this.scrollSpeed * deltaSeconds * speedMultiplier
     ) % this.roadSource.height;
 
     // Render at approximately 30 FPS
@@ -118,7 +119,7 @@ export class HalloweenEnvironment extends Phaser.GameObjects.Container {
     const frameInterval = 1000 / 30;
 
     if (this.frameElapsed < frameInterval) {
-      return;
+        return;
     }
 
     this.frameElapsed %= frameInterval;

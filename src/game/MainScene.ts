@@ -11,12 +11,14 @@ import {
   GameStateManager,
   type GameResult,
 } from './objects/GameStateManager';
+import { DifficultyManager } from './objects/DifficultyManager';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
   private spawnManager?: SpawnManager;
   private scoreManager?: ScoreManager;
   private gameStateManager?: GameStateManager;
+  private difficultyManager?: DifficultyManager;
   private pumpkin?: Pumpkin;
 
   private lastPublishedScore = -1;
@@ -72,6 +74,9 @@ export class MainScene extends Phaser.Scene {
     // Initialize game state
     this.gameStateManager = new GameStateManager();
     this.gameStateManager.start();
+
+    // Initialize difficulty for a new game
+    this.difficultyManager = new DifficultyManager();
 
     this.lastPublishedScore = -1;
     this.lastPublishedCandy = -1;
@@ -207,8 +212,6 @@ export class MainScene extends Phaser.Scene {
     if (type === 'candy') {
       this.scoreManager.collectCandy();
       this.publishScore();
-
-      console.log('🍬 Candy collected!');
       return;
     }
 
@@ -229,9 +232,6 @@ export class MainScene extends Phaser.Scene {
 
     // Notify React about the final game result
     this.game.events.emit('game-over', result);
-
-    console.log(`💥 Hit by ${type}!`);
-    console.log('🏁 Game Over:', result);
   };
 
   private publishScore() {
@@ -266,8 +266,27 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
-    this.environment?.scroll(delta);
-    this.spawnManager?.update(delta);
+    // Update difficulty based on survival time
+    this.difficultyManager?.update(delta);
+
+    const speedMultiplier =
+      this.difficultyManager?.speedMultiplier ?? 1;
+
+    const spawnIntervalMs =
+      this.difficultyManager?.spawnIntervalMs ?? 1800;
+
+    // Apply the shared speed multiplier
+    this.environment?.scroll(
+      delta,
+      speedMultiplier
+    );
+
+    this.spawnManager?.update(
+      delta,
+      speedMultiplier,
+      spawnIntervalMs
+    );
+
     this.scoreManager?.update(delta);
 
     // Check collisions between the pumpkin and spawned objects
