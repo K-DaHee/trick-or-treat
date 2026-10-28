@@ -1,11 +1,16 @@
+
 import Phaser from 'phaser';
 import { HalloweenEnvironment } from './objects/HalloweenEnvironment';
 import { Pumpkin } from './objects/Pumpkin';
-import { SpawnManager } from './objects/SpawnManager';
+import {
+  SpawnManager,
+  type SpawnType,
+} from './objects/SpawnManager';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
   private spawnManager?: SpawnManager;
+  private pumpkin?: Pumpkin;
 
   constructor() {
     super('MainScene');
@@ -47,7 +52,9 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#211238');
 
     this.environment = new HalloweenEnvironment(this);
+
     const pumpkin = new Pumpkin(this, 0, 0);
+    this.pumpkin = pumpkin;
 
     this.spawnManager = new SpawnManager(this);
 
@@ -104,7 +111,10 @@ export class MainScene extends Phaser.Scene {
 
       swipeStart = null;
 
-      const threshold = Math.max(30, this.scale.width * 0.08);
+      const threshold = Math.max(
+        30,
+        this.scale.width * 0.08
+      );
 
       if (
         Math.abs(deltaX) < threshold ||
@@ -148,8 +158,25 @@ export class MainScene extends Phaser.Scene {
     );
   }
 
+  private handleObjectCollision = (type: SpawnType) => {
+    if (type === 'candy') {
+      console.log('🍬 Candy collected!');
+      return;
+    }
+
+    console.log(`💥 Hit by ${type}!`);
+  };
+
   update(_time: number, delta: number) {
     this.environment?.scroll(delta);
     this.spawnManager?.update(delta);
+
+    // Check collisions between the pumpkin and spawned objects
+    if (this.pumpkin) {
+      this.spawnManager?.checkCollisions(
+        this.pumpkin,
+        this.handleObjectCollision
+      );
+    }
   }
 }
