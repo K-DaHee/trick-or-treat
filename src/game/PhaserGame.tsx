@@ -1,11 +1,22 @@
-import { useEffect, useRef } from 'react';
+
+import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { MainScene } from './MainScene';
 import GameHUD from '../components/GameHUD';
 import './PhaserGame.css';
 
+type ScoreUpdate = {
+  score: number;
+  candy: number;
+};
+
 export default function PhaserGame() {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [hud, setHud] = useState<ScoreUpdate>({
+    score: 0,
+    candy: 0,
+  });
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -21,7 +32,19 @@ export default function PhaserGame() {
       scene: [MainScene],
     });
 
+    // Receive score updates from Phaser
+    const handleScoreUpdated = (data: ScoreUpdate) => {
+      setHud({
+        score: data.score,
+        candy: data.candy,
+      });
+    };
+
+    game.events.on('score-updated', handleScoreUpdated);
+
+    // Clean up listeners when the component unmounts
     return () => {
+      game.events.off('score-updated', handleScoreUpdated);
       game.destroy(true);
     };
   }, []);
@@ -32,7 +55,10 @@ export default function PhaserGame() {
         ref={containerRef}
         className="phaser-game__canvas"
       />
-      <GameHUD score={0} candy={0} />
+      <GameHUD
+        score={hud.score}
+        candy={hud.candy}
+      />
     </div>
   );
 }
