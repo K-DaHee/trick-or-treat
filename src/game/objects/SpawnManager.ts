@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 type LaneIndex = 0 | 1 | 2;
-type SpawnType = 'candy' | 'bat' | 'ghost';
+export type SpawnType = 'candy' | 'bat' | 'ghost';
 
 interface SpawnedObject {
   image: Phaser.GameObjects.Image;
@@ -71,6 +71,42 @@ export class SpawnManager {
     if (this.spawnElapsed >= this.spawnInterval) {
       this.spawnElapsed -= this.spawnInterval;
       this.spawnObject();
+    }
+  }
+
+  checkCollisions(
+    pumpkin: Phaser.GameObjects.Image,
+    onCollision: (type: SpawnType) => void
+  ) {
+    for (let index = this.objects.length - 1; index >= 0; index--) {
+        const object = this.objects[index];
+
+        // Use smaller hitboxes to avoid false collisions
+        const hitboxX =
+        pumpkin.displayWidth * 0.3 +
+        object.image.displayWidth * 0.22;
+
+        const hitboxY =
+        pumpkin.displayHeight * 0.3 +
+        object.image.displayHeight * 0.22;
+
+        const distanceX = Math.abs(
+        pumpkin.x - object.image.x
+        );
+
+        const distanceY = Math.abs(
+        pumpkin.y - object.image.y
+        );
+
+        if (distanceX > hitboxX || distanceY > hitboxY) {
+        continue;
+        }
+
+        // Remove the object after a collision
+        object.image.destroy();
+        this.objects.splice(index, 1);
+
+        onCollision(object.type);
     }
   }
 
