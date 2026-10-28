@@ -6,11 +6,16 @@ import {
   SpawnManager,
   type SpawnType,
 } from './objects/SpawnManager';
+import { ScoreManager } from './objects/ScoreManager';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
   private spawnManager?: SpawnManager;
+  private scoreManager?: ScoreManager;
   private pumpkin?: Pumpkin;
+
+  private lastPublishedScore = -1;
+  private lastPublishedCandy = -1;
 
   constructor() {
     super('MainScene');
@@ -57,6 +62,13 @@ export class MainScene extends Phaser.Scene {
     this.pumpkin = pumpkin;
 
     this.spawnManager = new SpawnManager(this);
+    this.scoreManager = new ScoreManager();
+
+    this.lastPublishedScore = -1;
+    this.lastPublishedCandy = -1;
+
+    // Publish initial score values
+    this.publishScore();
 
     const updateLayout = () => {
       const { width, height } = this.scale;
@@ -160,16 +172,47 @@ export class MainScene extends Phaser.Scene {
 
   private handleObjectCollision = (type: SpawnType) => {
     if (type === 'candy') {
+      this.scoreManager?.collectCandy();
+
       console.log('🍬 Candy collected!');
+
+      this.publishScore();
       return;
     }
 
     console.log(`💥 Hit by ${type}!`);
   };
 
+  private publishScore() {
+    if (!this.scoreManager) {
+      return;
+    }
+
+    const score = this.scoreManager.score;
+    const candy = this.scoreManager.candy;
+
+    // Only publish when the displayed values change
+    if (
+      score === this.lastPublishedScore &&
+      candy === this.lastPublishedCandy
+    ) {
+      return;
+    }
+
+    this.lastPublishedScore = score;
+    this.lastPublishedCandy = candy;
+
+    // Send scoring data from Phaser to React
+    this.game.events.emit('score-updated', {
+      score,
+      candy,
+    });
+  }
+
   update(_time: number, delta: number) {
     this.environment?.scroll(delta);
     this.spawnManager?.update(delta);
+    this.scoreManager?.update(delta);
 
     // Check collisions between the pumpkin and spawned objects
     if (this.pumpkin) {
@@ -178,5 +221,7 @@ export class MainScene extends Phaser.Scene {
         this.handleObjectCollision
       );
     }
+
+    this.publishScore();
   }
 }
