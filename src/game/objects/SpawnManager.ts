@@ -1,3 +1,4 @@
+
 import Phaser from 'phaser';
 
 type LaneIndex = 0 | 1 | 2;
@@ -18,11 +19,25 @@ export class SpawnManager {
   private sceneHeight = 0;
 
   private spawnElapsed = 0;
+  private spawnsSinceCandy = 0;
+  private obstacleCount = 0;
+
+  private lastCandyLane: LaneIndex | null = null;
+  private lastObstacleLane: LaneIndex | null = null;
 
   private readonly spawnInterval = 1800;
   private readonly travelDuration = 8000;
-  private readonly minimumLaneGap = 0.28;
+  private readonly minimumLaneGap = 0.16;
   private readonly perspective = 3;
+
+  // Rotate obstacles across all three lanes
+  private readonly obstaclePatterns: readonly (
+    readonly LaneIndex[]
+  )[] = [
+    [1, 0, 2, 1, 2, 0],
+    [2, 1, 0, 2, 0, 1],
+    [0, 2, 1, 0, 1, 2],
+  ];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -42,7 +57,11 @@ export class SpawnManager {
     }
   }
 
-  update(delta: number) {
+  update(
+    delta: number,
+    speedMultiplier = 1,
+    spawnIntervalMs = this.spawnInterval
+  ) {
     if (this.sceneWidth <= 0 || this.sceneHeight <= 0) {
       return;
     }
@@ -55,9 +74,11 @@ export class SpawnManager {
     for (let index = this.objects.length - 1; index >= 0; index--) {
       const object = this.objects[index];
 
-      object.progress += deltaMs / this.travelDuration;
+      // Apply the shared game speed multiplier
+      object.progress +=
+        (deltaMs * speedMultiplier) / this.travelDuration;
 
-      // Remove objects when they reach the player's position
+      // Remove objects after they leave the screen
       if (object.progress >= 1.2) {
         object.image.destroy();
         this.objects.splice(index, 1);
@@ -67,10 +88,10 @@ export class SpawnManager {
       this.updateObjectPosition(object);
     }
 
-    // Spawn new objects at regular intervals
-    if (this.spawnElapsed >= this.spawnInterval) {
-      this.spawnElapsed -= this.spawnInterval;
-      this.spawnObject();
+    // Spawn objects using the current difficulty interval
+    if (this.spawnElapsed >= spawnIntervalMs) {
+      this.spawnElapsed -= spawnIntervalMs;
+      this.spawnObject(speedMultiplier);
     }
   }
 
@@ -79,68 +100,129 @@ export class SpawnManager {
     onCollision: (type: SpawnType) => void
   ) {
     for (let index = this.objects.length - 1; index >= 0; index--) {
-        const object = this.objects[index];
+      const object = this.objects[index];
 
-        // Use smaller hitboxes to avoid false collisions
-        const hitboxX =
+      // Use smaller hitboxes to avoid false collisions
+      const hitboxX =
         pumpkin.displayWidth * 0.3 +
         object.image.displayWidth * 0.22;
 
-        const hitboxY =
+      const hitboxY =
         pumpkin.displayHeight * 0.3 +
         object.image.displayHeight * 0.22;
 
-        const distanceX = Math.abs(
+      const distanceX = Math.abs(
         pumpkin.x - object.image.x
-        );
+      );
 
-        const distanceY = Math.abs(
+      const distanceY = Math.abs(
         pumpkin.y - object.image.y
-        );
+      );
 
-        if (distanceX > hitboxX || distanceY > hitboxY) {
+      if (distanceX > hitboxX || distanceY > hitboxY) {
         continue;
-        }
+      }
 
-        // Remove the object after a collision
-        object.image.destroy();
-        this.objects.splice(index, 1);
+      // Remove the object after a collision
+      object.image.destroy();
+      this.objects.splice(index, 1);
 
-        onCollision(object.type);
+      onCollision(object.type);
     }
   }
 
-  private spawnObject() {
+  private getAvailableLanes(): LaneIndex[] {
     const lanes: LaneIndex[] = [0, 1, 2];
 
-    // Avoid spawning objects too close in the same lane
-    const availableLanes = lanes.filter((lane) =>
+    // Prevent objects from spawning too close in one lane
+    return lanes.filter((lane) =>
       this.objects.every(
         (object) =>
           object.lane !== lane ||
           object.progress >= this.minimumLaneGap
       )
     );
+  }
+
+  private getNextObstacleLane(): LaneIndex {
+    const patternIndex =
+      Math.floor(
+        this.obstacleCount /
+        this.obstaclePatterns[0].length
+      ) % this.obstaclePatterns.length;
+
+    const positionInPattern =
+      this.obstacleCount %
+      this.obstaclePatterns[patternIndex].length;
+
+    return this.obstaclePatterns[patternIndex][
+      positionInPattern
+    ];
+  }
+
+  private spawnObject(speedMultiplier: number) {
+    const availableLanes = this.getAvailableLanes();
 
     if (availableLanes.length === 0) {
       return;
     }
 
-    const lane = Phaser.Utils.Array.GetRandom(
-      availableLanes
-    );
+    // Reduce candy frequency at higher difficulty
+    const candyEvery = speedMultiplier < 2.1
+      ? 3
+      : 5;
 
-    const random = Math.random();
+    const shouldSpawnCandy =
+      this.spawnsSinceCandy >= candyEvery - 1;
 
     let type: SpawnType;
+    let lane: LaneIndex;
 
-    // Candy appears more frequently than obstacles
-    if (random < 0.5) {
+    if (shouldSpawnCandy) {
+      // Avoid repeating the previous candy lane
+      const candyLanes = availableLanes.filter(
+        (candidate) =>
+          candidate !== this.lastCandyLane
+      );
+
+      if (candyLanes.length === 0) {
+        return;
+      }
+
       type = 'candy';
-    } else if (random < 0.75) {
-      type = 'bat';
+
+      lane = Phaser.Utils.Array.GetRandom(
+        candyLanes
+      );
+
+      this.lastCandyLane = lane;
+      this.spawnsSinceCandy = 0;
     } else {
-      type = 'ghost';
+      // Choose the next obstacle lane from a pattern
+      const preferredLane = this.getNextObstacleLane();
+
+      const alternateLanes = availableLanes.filter(
+        (candidate) =>
+          candidate !== this.lastObstacleLane
+      );
+
+      const candidates =
+        alternateLanes.length > 0
+          ? alternateLanes
+          : availableLanes;
+
+      lane = candidates.includes(preferredLane)
+        ? preferredLane
+        : Phaser.Utils.Array.GetRandom(candidates);
+
+      // Never replace an unavailable obstacle with candy
+      type = Phaser.Math.Between(0, 1) === 0
+        ? 'bat'
+        : 'ghost';
+
+      this.lastObstacleLane = lane;
+      this.obstacleCount += 1;
+      this.spawnsSinceCandy += 1;
     }
 
     const image = this.scene.add.image(
@@ -199,7 +281,7 @@ export class SpawnManager {
 
     const typeScale =
       object.type === 'candy'
-        ? 1.0
+        ? 0.95
         : object.type === 'bat'
           ? 1.3
           : 1.0;
