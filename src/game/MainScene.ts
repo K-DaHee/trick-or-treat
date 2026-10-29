@@ -12,6 +12,7 @@ import {
   type GameResult,
 } from './objects/GameStateManager';
 import { DifficultyManager } from './objects/DifficultyManager';
+import { PumpkinExplosion } from './objects/PumpkinExplosion';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
@@ -230,8 +231,18 @@ export class MainScene extends Phaser.Scene {
     // Stop pumpkin animations and lane movement
     this.tweens.killAll();
 
-    // Notify React about the final game result
-    this.game.events.emit('game-over', result);
+    // Play the pumpkin explosion before showing game over
+    if (this.pumpkin) {
+      PumpkinExplosion.play(
+        this,
+        this.pumpkin,
+        () => {
+          this.game.events.emit('game-over', result);
+        }
+      );
+    } else {
+      this.game.events.emit('game-over', result);
+    }
   };
 
   private publishScore() {
