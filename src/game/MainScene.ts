@@ -15,6 +15,7 @@ import { DifficultyManager } from './objects/DifficultyManager';
 import { PumpkinExplosion } from './objects/PumpkinExplosion';
 import { BatSwarm } from './objects/BatSwarm';
 import { GhostJumpscare } from './objects/GhostJumpscare';
+import { AudioManager } from './objects/AudioManager';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
@@ -22,7 +23,9 @@ export class MainScene extends Phaser.Scene {
   private scoreManager?: ScoreManager;
   private gameStateManager?: GameStateManager;
   private difficultyManager?: DifficultyManager;
+  private audioManager?: AudioManager;
   private pumpkin?: Pumpkin;
+  private muteButton?: Phaser.GameObjects.Text;
 
   private lastPublishedScore = -1;
   private lastPublishedCandy = -1;
@@ -62,10 +65,35 @@ export class MainScene extends Phaser.Scene {
       '/assets/sprites/halloween-ghost.png'
     );
 
-    // Scary ghost used only for collision effects
     this.load.image(
       'halloween-ghost-scary',
       '/assets/sprites/halloween-ghost-scary.png'
+    );
+
+    // Sound effects
+    this.load.audio(
+      'candy-pickup',
+      '/assets/audio/candy-pickup.wav'
+    );
+
+    this.load.audio(
+      'pumpkin-explosion',
+      '/assets/audio/pumpkin-explosion.wav'
+    );
+
+    this.load.audio(
+      'bat-swarm',
+      '/assets/audio/bat-swarm.wav'
+    );
+
+    this.load.audio(
+      'ghost-jumpscare',
+      '/assets/audio/ghost-jumpscare.wav'
+    );
+
+    this.load.audio(
+      'game-over',
+      '/assets/audio/game-over.wav'
     );
   }
 
@@ -80,18 +108,54 @@ export class MainScene extends Phaser.Scene {
     this.spawnManager = new SpawnManager(this);
     this.scoreManager = new ScoreManager();
 
-    // Initialize game state
     this.gameStateManager = new GameStateManager();
     this.gameStateManager.start();
 
-    // Initialize difficulty for a new game
     this.difficultyManager = new DifficultyManager();
+
+    this.audioManager = new AudioManager(this);
 
     this.lastPublishedScore = -1;
     this.lastPublishedCandy = -1;
 
-    // Publish initial score values
     this.publishScore();
+
+    // Mute button for both BGM and sound effects
+    this.muteButton = this.add.text(
+      0,
+      0,
+      this.audioManager.isMuted ? '🔇' : '🔊',
+      {
+        fontSize: '28px',
+        backgroundColor: '#21123899',
+        padding: {
+          x: 10,
+          y: 8,
+        },
+      }
+    );
+
+    this.muteButton
+      .setOrigin(1, 0)
+      .setDepth(2000)
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    this.muteButton.on('pointerdown', () => {
+      if (!this.audioManager) {
+        return;
+      }
+
+      const muted = this.audioManager.toggleMute();
+
+      this.muteButton?.setText(
+        muted ? '🔇' : '🔊'
+      );
+
+      // Notify React to mute/unmute BGM too
+      this.game.events.emit('sound-muted', muted);
+    });
 
     const updateLayout = () => {
       const { width, height } = this.scale;
@@ -102,6 +166,11 @@ export class MainScene extends Phaser.Scene {
       pumpkin.setLanePosition(
         width,
         height * 0.85
+      );
+
+      this.muteButton?.setPosition(
+        width - 12,
+        76
       );
     };
 
@@ -125,8 +194,15 @@ export class MainScene extends Phaser.Scene {
     };
 
     // Keyboard controls
-    this.input.keyboard?.on('keydown-LEFT', moveLeft);
-    this.input.keyboard?.on('keydown-RIGHT', moveRight);
+    this.input.keyboard?.on(
+      'keydown-LEFT',
+      moveLeft
+    );
+
+    this.input.keyboard?.on(
+      'keydown-RIGHT',
+      moveRight
+    );
 
     let swipeStart: {
       x: number;
@@ -134,8 +210,9 @@ export class MainScene extends Phaser.Scene {
       pointerId: number;
     } | null = null;
 
-    // Track where the swipe begins
-    const onPointerDown = (pointer: Phaser.Input.Pointer) => {
+    const onPointerDown = (
+      pointer: Phaser.Input.Pointer
+    ) => {
       if (!this.gameStateManager?.isPlaying) {
         return;
       }
@@ -147,14 +224,18 @@ export class MainScene extends Phaser.Scene {
       };
     };
 
-    // Move one lane when a horizontal swipe is detected
-    const onPointerUp = (pointer: Phaser.Input.Pointer) => {
+    const onPointerUp = (
+      pointer: Phaser.Input.Pointer
+    ) => {
       if (!this.gameStateManager?.isPlaying) {
         swipeStart = null;
         return;
       }
 
-      if (!swipeStart || pointer.id !== swipeStart.pointerId) {
+      if (
+        !swipeStart ||
+        pointer.id !== swipeStart.pointerId
+      ) {
         return;
       }
 
@@ -182,15 +263,21 @@ export class MainScene extends Phaser.Scene {
       }
     };
 
-    this.input.on('pointerdown', onPointerDown);
-    this.input.on('pointerup', onPointerUp);
+    this.input.on(
+      'pointerdown',
+      onPointerDown
+    );
+
+    this.input.on(
+      'pointerup',
+      onPointerUp
+    );
 
     this.scale.on(
       Phaser.Scale.Events.RESIZE,
       updateLayout
     );
 
-    // Clean up listeners when the scene shuts down
     this.events.once(
       Phaser.Scenes.Events.SHUTDOWN,
       () => {
@@ -199,18 +286,38 @@ export class MainScene extends Phaser.Scene {
           updateLayout
         );
 
-        this.input.keyboard?.off('keydown-LEFT', moveLeft);
-        this.input.keyboard?.off('keydown-RIGHT', moveRight);
+        this.input.keyboard?.off(
+          'keydown-LEFT',
+          moveLeft
+        );
 
-        this.input.off('pointerdown', onPointerDown);
-        this.input.off('pointerup', onPointerUp);
+        this.input.keyboard?.off(
+          'keydown-RIGHT',
+          moveRight
+        );
+
+        this.input.off(
+          'pointerdown',
+          onPointerDown
+        );
+
+        this.input.off(
+          'pointerup',
+          onPointerUp
+        );
 
         this.spawnManager?.destroy();
+        this.audioManager?.destroy();
+
+        this.audioManager = undefined;
+        this.muteButton = undefined;
       }
     );
   }
 
-  private handleObjectCollision = (type: SpawnType) => {
+  private handleObjectCollision = (
+    type: SpawnType
+  ) => {
     if (
       !this.gameStateManager?.isPlaying ||
       !this.scoreManager
@@ -220,26 +327,29 @@ export class MainScene extends Phaser.Scene {
 
     if (type === 'candy') {
       this.scoreManager.collectCandy();
+      this.audioManager?.playCandyPickup();
       this.publishScore();
       return;
     }
 
-    // Save the final result when an obstacle is hit
     const result: GameResult = {
       score: this.scoreManager.score,
       candy: this.scoreManager.candy,
-      survivalSeconds: this.scoreManager.survivalSeconds,
+      survivalSeconds:
+        this.scoreManager.survivalSeconds,
     };
 
-    // Prevent duplicate game-over events
     if (!this.gameStateManager.gameOver(result)) {
       return;
     }
 
-    // Stop existing animations and lane movement
+    // Stop gameplay animations
     this.tweens.killAll();
 
+    this.audioManager?.playPumpkinExplosion();
+
     const finishGame = () => {
+      this.audioManager?.playGameOver();
       this.game.events.emit('game-over', result);
     };
 
@@ -252,12 +362,13 @@ export class MainScene extends Phaser.Scene {
     const pumpkinY = this.pumpkin.y;
 
     if (type === 'bat') {
-      // Preserve the existing bat collision animation
       PumpkinExplosion.play(
         this,
         this.pumpkin,
         () => {}
       );
+
+      this.audioManager?.playBatSwarm();
 
       BatSwarm.play(
         this,
@@ -265,26 +376,24 @@ export class MainScene extends Phaser.Scene {
         pumpkinY
       );
 
-      // Show GAME OVER while bats are still flying
       this.time.delayedCall(
         1800,
         finishGame
       );
     } else if (type === 'ghost') {
-      // Start pumpkin explosion immediately
       PumpkinExplosion.play(
         this,
         this.pumpkin,
         () => {}
       );
 
-      // Scary ghost appears only after ghost collision
+      this.audioManager?.playGhostJumpscare();
+
       GhostJumpscare.play(
         this,
         finishGame
       );
     } else {
-      // Fallback for other obstacle types
       PumpkinExplosion.play(
         this,
         this.pumpkin,
@@ -301,7 +410,6 @@ export class MainScene extends Phaser.Scene {
     const score = this.scoreManager.score;
     const candy = this.scoreManager.candy;
 
-    // Only publish when displayed values change
     if (
       score === this.lastPublishedScore &&
       candy === this.lastPublishedCandy
@@ -312,29 +420,33 @@ export class MainScene extends Phaser.Scene {
     this.lastPublishedScore = score;
     this.lastPublishedCandy = candy;
 
-    // Send scoring data from Phaser to React
-    this.game.events.emit('score-updated', {
-      score,
-      candy,
-    });
+    this.game.events.emit(
+      'score-updated',
+      {
+        score,
+        candy,
+      }
+    );
   }
 
-  update(_time: number, delta: number) {
-    // Stop gameplay updates after game over
+  update(
+    _time: number,
+    delta: number
+  ) {
     if (!this.gameStateManager?.isPlaying) {
       return;
     }
 
-    // Update difficulty based on survival time
     this.difficultyManager?.update(delta);
 
     const speedMultiplier =
-      this.difficultyManager?.speedMultiplier ?? 1;
+      this.difficultyManager
+        ?.speedMultiplier ?? 1;
 
     const spawnIntervalMs =
-      this.difficultyManager?.spawnIntervalMs ?? 1800;
+      this.difficultyManager
+        ?.spawnIntervalMs ?? 1800;
 
-    // Apply shared speed multiplier
     this.environment?.scroll(
       delta,
       speedMultiplier
@@ -348,7 +460,6 @@ export class MainScene extends Phaser.Scene {
 
     this.scoreManager?.update(delta);
 
-    // Check collisions between pumpkin and spawned objects
     if (this.pumpkin) {
       this.spawnManager?.checkCollisions(
         this.pumpkin,
