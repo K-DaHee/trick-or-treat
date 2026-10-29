@@ -18,7 +18,7 @@ export class SpawnManager {
   private sceneWidth = 0;
   private sceneHeight = 0;
 
-  private spawnElapsed = 0;
+  private spawnElapsed = 1_350;
   private spawnsSinceCandy = 0;
   private obstacleCount = 0;
 
