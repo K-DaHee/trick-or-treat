@@ -14,6 +14,7 @@ import {
 import { DifficultyManager } from './objects/DifficultyManager';
 import { PumpkinExplosion } from './objects/PumpkinExplosion';
 import { BatSwarm } from './objects/BatSwarm';
+import { GhostJumpscare } from './objects/GhostJumpscare';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
@@ -59,6 +60,12 @@ export class MainScene extends Phaser.Scene {
     this.load.image(
       'halloween-ghost',
       '/assets/sprites/halloween-ghost.png'
+    );
+
+    // Scary ghost used only for collision effects
+    this.load.image(
+      'halloween-ghost-scary',
+      '/assets/sprites/halloween-ghost-scary.png'
     );
   }
 
@@ -229,47 +236,59 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
-    // Stop pumpkin animations and lane movement
+    // Stop existing animations and lane movement
     this.tweens.killAll();
 
-    if (!this.pumpkin) {
+    const finishGame = () => {
       this.game.events.emit('game-over', result);
+    };
+
+    if (!this.pumpkin) {
+      finishGame();
       return;
     }
 
+    const pumpkinX = this.pumpkin.x;
+    const pumpkinY = this.pumpkin.y;
+
     if (type === 'bat') {
-      // Play the pumpkin explosion immediately
+      // Preserve the existing bat collision animation
       PumpkinExplosion.play(
         this,
         this.pumpkin,
         () => {}
       );
 
-      const pumpkinX = this.pumpkin.x;
-      const pumpkinY = this.pumpkin.y;
-
-      // Start the bat swarm shortly after collision
       BatSwarm.play(
         this,
         pumpkinX,
         pumpkinY
       );
 
-      // Show GAME OVER while the bats are still flying
+      // Show GAME OVER while bats are still flying
       this.time.delayedCall(
-        1500,
-        () => {
-          this.game.events.emit('game-over', result);
-        }
+        1800,
+        finishGame
       );
-    } else {
-      // Keep existing ghost collision behavior
+    } else if (type === 'ghost') {
+      // Start pumpkin explosion immediately
       PumpkinExplosion.play(
         this,
         this.pumpkin,
-        () => {
-          this.game.events.emit('game-over', result);
-        }
+        () => {}
+      );
+
+      // Scary ghost appears only after ghost collision
+      GhostJumpscare.play(
+        this,
+        finishGame
+      );
+    } else {
+      // Fallback for other obstacle types
+      PumpkinExplosion.play(
+        this,
+        this.pumpkin,
+        finishGame
       );
     }
   };
@@ -282,7 +301,7 @@ export class MainScene extends Phaser.Scene {
     const score = this.scoreManager.score;
     const candy = this.scoreManager.candy;
 
-    // Only publish when the displayed values change
+    // Only publish when displayed values change
     if (
       score === this.lastPublishedScore &&
       candy === this.lastPublishedCandy
@@ -315,7 +334,7 @@ export class MainScene extends Phaser.Scene {
     const spawnIntervalMs =
       this.difficultyManager?.spawnIntervalMs ?? 1800;
 
-    // Apply the shared speed multiplier
+    // Apply shared speed multiplier
     this.environment?.scroll(
       delta,
       speedMultiplier
@@ -329,7 +348,7 @@ export class MainScene extends Phaser.Scene {
 
     this.scoreManager?.update(delta);
 
-    // Check collisions between the pumpkin and spawned objects
+    // Check collisions between pumpkin and spawned objects
     if (this.pumpkin) {
       this.spawnManager?.checkCollisions(
         this.pumpkin,
