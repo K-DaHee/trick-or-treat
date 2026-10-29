@@ -12,7 +12,13 @@ type ScoreUpdate = {
   candy: number;
 };
 
-export default function PhaserGame() {
+type PhaserGameProps = {
+  bgm: HTMLAudioElement;
+};
+
+export default function PhaserGame({
+  bgm,
+}: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
 
@@ -25,7 +31,9 @@ export default function PhaserGame() {
     useState<GameResult | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      return;
+    }
 
     const game = new Phaser.Game({
       type: Phaser.AUTO,
@@ -48,23 +56,54 @@ export default function PhaserGame() {
       });
     };
 
-    // Receive the final game result
+    // Stop background music when the game ends
     const handleGameOver = (result: GameResult) => {
+      bgm.pause();
+      bgm.currentTime = 0;
+
       setGameOverResult(result);
     };
 
-    game.events.on('score-updated', handleScoreUpdated);
-    game.events.on('game-over', handleGameOver);
+    // Synchronize the Phaser mute button with React BGM
+    const handleSoundMuted = (muted: boolean) => {
+      bgm.muted = muted;
+    };
 
-    // Clean up listeners when the component unmounts
+    game.events.on(
+      'score-updated',
+      handleScoreUpdated
+    );
+
+    game.events.on(
+      'game-over',
+      handleGameOver
+    );
+
+    game.events.on(
+      'sound-muted',
+      handleSoundMuted
+    );
+
     return () => {
-      game.events.off('score-updated', handleScoreUpdated);
-      game.events.off('game-over', handleGameOver);
+      game.events.off(
+        'score-updated',
+        handleScoreUpdated
+      );
+
+      game.events.off(
+        'game-over',
+        handleGameOver
+      );
+
+      game.events.off(
+        'sound-muted',
+        handleSoundMuted
+      );
 
       gameRef.current = null;
       game.destroy(true);
     };
-  }, []);
+  }, [bgm]);
 
   const handleRetry = () => {
     const game = gameRef.current;
@@ -73,7 +112,14 @@ export default function PhaserGame() {
       return;
     }
 
-    // Reset the React HUD and result screen
+    // Restart BGM directly from the TRY AGAIN click
+    bgm.currentTime = 0;
+
+    void bgm.play().catch((error) => {
+      console.warn('Unable to restart background music:', error);
+    });
+
+    // Reset React HUD
     setHud({
       score: 0,
       candy: 0,
