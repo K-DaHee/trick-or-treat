@@ -1,45 +1,42 @@
+
 import './StartScreen.css';
 
 type StartScreenProps = {
   onStart: () => void;
 };
 
-export default function StartScreen({ onStart }: StartScreenProps) {
+export default function StartScreen({
+  onStart,
+}: StartScreenProps) {
   return (
-    <section className="start-screen">
-      <div className="start-screen__content">
-        <header className="start-screen__header">
-          <h1 className="start-screen__title">
-            🍬 Trick or Treat 🍬
-          </h1>
-          <p className="start-screen__subtitle">
-            G🎃! Pumpkin!
-          </p>
-        </header>
-
+    <main className="start-screen">
+      <div className="start-screen__artwork">
+        {/* Original Halloween start screen artwork */}
         <img
-          className="start-screen__pumpkin"
-          src="/assets/sprites/pumpkin.png"
-          alt="Pumpkin character"
+          className="start-screen__image"
+          src="/assets/backgrounds/start-screen.png"
+          alt=""
+          draggable={false}
         />
 
-        <p className="start-screen__description">
-          Collect candy, dodge spooky obstacles,
-          and beat your best score!
-        </p>
+        {/* Accessible game title */}
+        <h1 className="start-screen__sr-only">
+          Trick or Treat — Go! Pumpkin!
+        </h1>
 
+        {/* Clickable area over the START GAME button */}
         <button
-          className="start-screen__button"
+          className="start-screen__start-button"
           type="button"
           onClick={onStart}
-        >
-          START GAME
-        </button>
+          aria-label="Start Game"
+        />
 
-        <p className="start-screen__instructions">
-          Swipe left or right to change lanes
+        {/* Accessible game instructions */}
+        <p className="start-screen__sr-only">
+          Swipe left or right to change lanes.
         </p>
       </div>
-    </section>
+    </main>
   );
 }
