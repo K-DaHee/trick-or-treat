@@ -14,13 +14,19 @@ type ScoreUpdate = {
 
 type PhaserGameProps = {
   bgm: HTMLAudioElement;
+  onReady: () => void;
 };
 
 export default function PhaserGame({
   bgm,
+  onReady,
 }: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
+  const onReadyRef = useRef(onReady);
+
+  // Always use the latest callback without recreating Phaser
+  onReadyRef.current = onReady;
 
   const [hud, setHud] = useState<ScoreUpdate>({
     score: 0,
@@ -48,6 +54,33 @@ export default function PhaserGame({
 
     gameRef.current = game;
 
+    // Reveal the game only after MainScene has rendered
+    const handleFirstRenderedFrame = () => {
+      const mainSceneIsRunning = game.scene
+        .getScenes(true)
+        .some(
+          (scene) =>
+            scene.scene.key === 'MainScene' &&
+            scene.sys.settings.status === Phaser.Scenes.RUNNING
+        );
+
+      if (!mainSceneIsRunning) {
+        return;
+      }
+
+      game.events.off(
+        Phaser.Core.Events.POST_RENDER,
+        handleFirstRenderedFrame
+      );
+
+      onReadyRef.current();
+    };
+
+    game.events.on(
+      Phaser.Core.Events.POST_RENDER,
+      handleFirstRenderedFrame
+    );
+
     // Receive score updates from Phaser
     const handleScoreUpdated = (data: ScoreUpdate) => {
       setHud({
@@ -56,7 +89,7 @@ export default function PhaserGame({
       });
     };
 
-    // Stop background music when the game ends
+    // Stop BGM when GAME OVER is displayed
     const handleGameOver = (result: GameResult) => {
       bgm.pause();
       bgm.currentTime = 0;
@@ -64,7 +97,7 @@ export default function PhaserGame({
       setGameOverResult(result);
     };
 
-    // Synchronize the Phaser mute button with React BGM
+    // Synchronize the mute button with background music
     const handleSoundMuted = (muted: boolean) => {
       bgm.muted = muted;
     };
@@ -85,6 +118,11 @@ export default function PhaserGame({
     );
 
     return () => {
+      game.events.off(
+        Phaser.Core.Events.POST_RENDER,
+        handleFirstRenderedFrame
+      );
+
       game.events.off(
         'score-updated',
         handleScoreUpdated
@@ -116,10 +154,13 @@ export default function PhaserGame({
     bgm.currentTime = 0;
 
     void bgm.play().catch((error) => {
-      console.warn('Unable to restart background music:', error);
+      console.warn(
+        'Unable to restart background music:',
+        error
+      );
     });
 
-    // Reset React HUD
+    // Reset HUD and result
     setHud({
       score: 0,
       candy: 0,
@@ -127,7 +168,7 @@ export default function PhaserGame({
 
     setGameOverResult(null);
 
-    // Restart Phaser without creating another game instance
+    // Restart the existing Phaser scene
     const scene = game.scene.getScene('MainScene');
     scene.scene.restart();
   };
