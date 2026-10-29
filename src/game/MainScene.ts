@@ -13,6 +13,7 @@ import {
 } from './objects/GameStateManager';
 import { DifficultyManager } from './objects/DifficultyManager';
 import { PumpkinExplosion } from './objects/PumpkinExplosion';
+import { BatSwarm } from './objects/BatSwarm';
 
 export class MainScene extends Phaser.Scene {
   private environment?: HalloweenEnvironment;
@@ -231,8 +232,38 @@ export class MainScene extends Phaser.Scene {
     // Stop pumpkin animations and lane movement
     this.tweens.killAll();
 
-    // Play the pumpkin explosion before showing game over
-    if (this.pumpkin) {
+    if (!this.pumpkin) {
+      this.game.events.emit('game-over', result);
+      return;
+    }
+
+    if (type === 'bat') {
+      // Play the pumpkin explosion immediately
+      PumpkinExplosion.play(
+        this,
+        this.pumpkin,
+        () => {}
+      );
+
+      const pumpkinX = this.pumpkin.x;
+      const pumpkinY = this.pumpkin.y;
+
+      // Start the bat swarm shortly after collision
+      BatSwarm.play(
+        this,
+        pumpkinX,
+        pumpkinY
+      );
+
+      // Show GAME OVER while the bats are still flying
+      this.time.delayedCall(
+        1500,
+        () => {
+          this.game.events.emit('game-over', result);
+        }
+      );
+    } else {
+      // Keep existing ghost collision behavior
       PumpkinExplosion.play(
         this,
         this.pumpkin,
@@ -240,8 +271,6 @@ export class MainScene extends Phaser.Scene {
           this.game.events.emit('game-over', result);
         }
       );
-    } else {
-      this.game.events.emit('game-over', result);
     }
   };
 
